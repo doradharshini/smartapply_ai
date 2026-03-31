@@ -1,0 +1,22 @@
+[
+  {
+    "name": "Pradhan Mantri Awas Yojana (PMAY)",
+    "description": "Housing for All scheme aiming to provide affordable housing to the urban and rural poor.",
+    "eligibility": "Annual income less than 18 Lakhs, must not own a pacca house anywhere in India."
+  },
+  {
+    "name": "Ayushman Bharat PM-JAY",
+    "description": "National public health insurance fund providing free coverage for low income earners.",
+    "eligibility": "Families listed in SECC 2011 database, no formal sector employment."
+  },
+  {
+    "name": "PM Kisan Samman Nidhi",
+    "description": "Income support scheme for farmers, providing ₹6,000 per year.",
+    "eligibility": "All landholding farmers' families, excluding those with high economic status."
+  },
+  {
+    "name": "Startup India Seed Fund Scheme",
+    "description": "Financial assistance to startups for proof of concept, prototype development, product trials, market entry, and commercialization.",
+    "eligibility": "DPIIT-recognized start-up incorporated not more than 2 years ago, must have a scalable business idea."
+  }
+]
