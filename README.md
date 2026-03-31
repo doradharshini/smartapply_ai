@@ -10,72 +10,96 @@ Built for seamless performance, it leverages an uncoupled architecture linking t
 
 ```mermaid
 flowchart LR
-    A["👤 User"] -->|query| B["🤖 ADK Agent<br/>Gemini Flash"]
-    B -->|MCPToolset<br/>stdio| C["⚙️ MCP Server<br/>FastMCP"]
-    C -->|get_all_schemes| D["📊 database.json<br/>Gov Schemes"]
-    D -->|structured data| C
-    C -->|JSON response| B
-    B -->|recommendation| E["✅ Output"]
+  Citizen["👤 Citizen Request"]
+  UI["💬 Chat/Web UI"]
+  CloudRun["☁️ Cloud Run Service"]
+  Guardrails["🛡️ Validation + Guardrails"]
+  Agent["🤖 ADK Agent"]
+  MCP["⚙️ FastMCP Server"]
+  DB["📊 JSON Database"]
+  Guidance["✅ Guidance"]
 
-    style A fill:#E8F0FE,stroke:#4285F4,color:#4285F4
-    style B fill:#E8F0FE,stroke:#4285F4,color:#4285F4
-    style C fill:#FEF7E0,stroke:#FBBC05,color:#E37400
-    style D fill:#E6F4EA,stroke:#34A853,color:#137333
-    style E fill:#FCE8E6,stroke:#EA4335,color:#C5221F
+  Vertex["🧠 Vertex AI<br/>(Gemini 2.5 Flash)"]
+  ADC["🔐 ADC Auth (No API Keys)"]
+  Logs["📈 Logs + Metrics"]
+
+  Citizen -->|"1. Profile"| UI -->|"request"| CloudRun -->|"validate"| Guardrails --> Agent
+  Agent -->|"2. Tool Call"| MCP
+  MCP -->|"3. Query"| DB
+  DB -.->|"4. Data"| MCP
+  MCP -.->|"5. Response"| Agent
+  Agent ==>|"6. Advice"| Guidance
+
+  Agent -.->|"model call"| Vertex
+  ADC -.->|"auth"| Vertex
+  Vertex -.->|"completion"| Agent
+
+  CloudRun -.-> Logs
+  Agent -.-> Logs
+  MCP -.-> Logs
+
+  style Citizen fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style UI fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style CloudRun fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style Guardrails fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style Agent fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style Vertex fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style ADC fill:#E8F0FE,stroke:#4285F4,color:#4285F4,stroke-width:2px
+  style MCP fill:#FEF7E0,stroke:#FBBC05,color:#E37400,stroke-width:2px
+  style DB fill:#E6F4EA,stroke:#34A853,color:#137333,stroke-width:2px
+  style Guidance fill:#FCE8E6,stroke:#EA4335,color:#C5221F,stroke-width:2px
+  style Logs fill:#ffffff,stroke:#bdc1c6,color:#5f6368,stroke-width:2px
 ```
 
-1. **MCP Server (`app/mcp_service/mcp_main.py`)**: Built with FastMCP to expose JSON mock records of government schemes securely over standard input/output.
-2. **ADK Agent (`app/ai_agent/eligibility_agent.py`)**: The orchestration layer. A Google `LlmAgent` runs on `gemini-2.5-flash` (via Vertex AI). It binds dynamically to the MCP Server, queries the user's eligibility, processes the logic, and returns a rich summary.
+1. **MCP Server (`mcp_main.py`)**: Built with FastMCP to expose a structured scheme catalog (`database.json`) over MCP tools.
+2. **ADK Agent (`smartapply_agent/agent.py`)**: A Google ADK `LlmAgent` running `gemini-2.5-flash` (Vertex AI) and calling MCP tools over stdio.
 
 ---
 
 ## Quickstart (Local)
 
 1. Make sure Python 3.11 is installed.
-2. Clone/open the repo and navigate into `smartapply_ai`.
-3. Create a virtual environment and load requirements:
+2. Install dependencies:
    ```bash
+   cd smartapply_ai
    pip install -r requirements.txt
    ```
-4. Authenticate with Google Cloud using your Lab ID/Project:
+3. Authenticate with Google Cloud (ADC):
    ```bash
    gcloud auth application-default login
    ```
-5. Ensure your `.env` contains the required Vertex AI setup:
+4. Set Vertex AI env vars (copy `.env.example` to `.env` or export env vars):
    ```env
    GOOGLE_GENAI_USE_VERTEXAI=TRUE
-   GOOGLE_CLOUD_PROJECT=your-google-lab-project-id
+   GOOGLE_CLOUD_PROJECT=your-gcp-project-id
    GOOGLE_CLOUD_LOCATION=us-central1
    ```
-6. Run the agent:
+5. Run ADK Dev UI:
    ```bash
-   python app/ai_agent/eligibility_agent.py
+   adk web
    ```
 
 ---
 
 ## Google Cloud Run Deployment
 
-Deploy your SmartApply AI agent instantly with zero local Docker build permissions using Google Cloud Run sourced deployments!
+### Build + Deploy (same pattern as NextMove)
 
-### Prerequisites:
+```bash
+gcloud services enable aiplatform.googleapis.com run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/smartapply-ai
+gcloud run deploy smartapply-ai \
+  --image gcr.io/YOUR_PROJECT_ID/smartapply-ai \
+  --region us-central1 \
+  --platform managed \
+  --allow-unauthenticated \
+  --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1" \
+  --memory=1Gi \
+  --timeout=300
+```
 
-- Check that the `gcloud` CLI is installed and authenticated.
+### Get the Cloud Run URL (one-liner)
 
-### Deployment Steps:
-
-1. **Navigate to the app root**
-
-   ```bash
-   cd c:\MySpace\Projects\GenAI\smartapply_ai
-   ```
-
-2. **Deploy effortlessly**
-   We leverage `--source .` so Cloud Build compiles everything directly in the cloud, utilizing Vertex AI configuration automatically!
-   ```bash
-   gcloud run deploy smartapply-ai-service \
-     --source . \
-     --region us-central1 \
-     --set-env-vars GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=YOUR_PROJECT_ID,GOOGLE_CLOUD_LOCATION=us-central1 \
-     --allow-unauthenticated
-   ```
+```bash
+gcloud run services describe smartapply-ai --region us-central1 --format="value(status.url)"
+```

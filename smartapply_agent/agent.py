@@ -1,5 +1,7 @@
 """
 SmartApply AI Agent - ADK Agent with MCP Integration
+Decision intelligence agent that helps citizens evaluate eligibility for government schemes
+by fetching structured scheme data through a custom MCP server.
 """
 
 import os
@@ -9,11 +11,10 @@ from google.adk.tools.mcp_tool import MCPToolset
 from google.adk.tools.mcp_tool.mcp_toolset import StdioConnectionParams
 from mcp import StdioServerParameters
 
-# Path to the MCP server script
+# Path to the MCP server script (relative to project root)
 MCP_SERVER_SCRIPT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "mcp_service",
-    "mcp_main.py"
+    "mcp_main.py",
 )
 
 AGENT_INSTRUCTION = """You are SmartApply AI, a specialized decision intelligence agent that helps citizens
